@@ -52,11 +52,11 @@ func main() {
 				log.Println("Initialize:", result)
 			} else {
 				// compare
-				bitcoinDiff := result.TotalBitcoinInTrust - newResult.TotalBitcoinInTrust
-				aumDiff := result.Aum - newResult.Aum
+				bitcoinDiff := newResult.TotalBitcoinInTrust - result.TotalBitcoinInTrust
+				aumDiff := newResult.Aum - result.Aum
 				layout := "01/02/2006"
-				formattedTime := result.Date.Format(layout)
-				msg := fmt.Sprintf("GBTC %s\nChange - Bitcoin: %.1f, AUM: $%.1f\nTotal  - Bitcoin: %.1f, AUM: $%.1f", formattedTime, bitcoinDiff, aumDiff, result.TotalBitcoinInTrust, result.Aum)
+				formattedTime := newResult.Date.Format(layout)
+				msg := fmt.Sprintf("GBTC %s\nChange - Bitcoin: %.1f, AUM: $%.1f\nTotal  - Bitcoin: %.1f, AUM: $%.1f", formattedTime, bitcoinDiff, aumDiff, newResult.TotalBitcoinInTrust, newResult.Aum)
 
 				postEvent(msg)
 
