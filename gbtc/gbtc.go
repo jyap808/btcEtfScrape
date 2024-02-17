@@ -22,9 +22,8 @@ type nextData struct {
 }
 
 type Result struct {
-	TotalBitcoinInTrust float64   // interface {}(string) "492,112.4534"
-	Date                time.Time // interface {}(string) "01/30/2024"
-	Aum                 float64   // interface {}(string) "$21,436,507,050.86"
+	TotalBitcoinInTrust float64
+	Date                time.Time
 }
 
 func Collect() (result Result) {
@@ -56,8 +55,6 @@ func Collect() (result Result) {
 		if err != nil {
 			log.Fatal(err)
 		}
-
-		//return result
 	})
 
 	// Set up error handling
@@ -75,8 +72,10 @@ func Collect() (result Result) {
 	return result
 }
 
-// findResultsInIncludes searches for the "totalBitcoinInTrust" field within "includes"
+// findResultsInIncludes searches for the unique field within "includes"
 func findResultsInIncludes(includesData map[string]interface{}) (Result, error) {
+	result := &Result{}
+
 	for _, value := range includesData {
 		// Assuming the value is a map[string]interface{}
 		include, ok := value.(map[string]interface{})
@@ -90,19 +89,16 @@ func findResultsInIncludes(includesData map[string]interface{}) (Result, error) 
 			inputClean := strings.ReplaceAll(totalBitcoinInTrustRaw, ",", "")
 			totalBitcoinInTrust, _ := strconv.ParseFloat(inputClean, 64)
 
-			aumRaw, _ := include["aum"].(string)
-			inputClean = strings.ReplaceAll(aumRaw, ",", "")
-			inputClean = strings.ReplaceAll(inputClean, "$", "")
-			aum, _ := strconv.ParseFloat(inputClean, 64)
-
 			// Define the layout of the input date
 			layout := "01/02/2006"
 			// Parse the string as a time.Time value
 			parsedTime, _ := time.Parse(layout, include["date"].(string))
 
-			result := Result{TotalBitcoinInTrust: totalBitcoinInTrust, Aum: aum, Date: parsedTime}
-			return result, nil
+			result.TotalBitcoinInTrust = totalBitcoinInTrust
+			result.Date = parsedTime
 		}
+
+		return *result, nil
 	}
 
 	return Result{}, fmt.Errorf("totalBitcoinInTrust not found within 'includes'")
