@@ -22,18 +22,13 @@ type nextData struct {
 }
 
 type Result struct {
-	TotalBitcoinInTrust float64
-	Date                time.Time
+	TotalBitcoin float64
+	Date         time.Time
 }
 
 func Collect() (result Result) {
 	// creating a new Colly instance
 	c := colly.NewCollector()
-
-	// Before making a request print "Visiting ..."
-	c.OnRequest(func(r *colly.Request) {
-		log.Println("Visiting", r.URL.String())
-	})
 
 	// Set up a callback to be executed when the HTML body is found
 	c.OnHTML("body", func(e *colly.HTMLElement) {
@@ -67,8 +62,6 @@ func Collect() (result Result) {
 
 	c.Wait()
 
-	log.Printf("Scraping finished")
-
 	return result
 }
 
@@ -94,11 +87,11 @@ func findResultsInIncludes(includesData map[string]interface{}) (Result, error) 
 			// Parse the string as a time.Time value
 			parsedTime, _ := time.Parse(layout, include["date"].(string))
 
-			result.TotalBitcoinInTrust = totalBitcoinInTrust
+			result.TotalBitcoin = totalBitcoinInTrust
 			result.Date = parsedTime
-		}
 
-		return *result, nil
+			return *result, nil
+		}
 	}
 
 	return Result{}, fmt.Errorf("totalBitcoinInTrust not found within 'includes'")

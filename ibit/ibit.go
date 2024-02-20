@@ -14,15 +14,14 @@ type FundData struct {
 
 type Fund struct {
 	Ticker string
-	Shares Shares
+	Shares Result
 }
 
-type Shares struct {
-	Display string  `json:"display"`
-	Raw     float64 `json:"raw"`
+type Result struct {
+	TotalBitcoin float64 `json:"raw"`
 }
 
-func Collect() float64 {
+func Collect() (result Result) {
 	url := "https://blackrock.com/us/financial-professionals/products/333011/fund/1500962885783.ajax?tab=all&fileType=json"
 
 	// Create a new HTTP client
@@ -32,14 +31,14 @@ func Collect() float64 {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		log.Println("Error creating request:", err)
-		return 0
+		return
 	}
 
 	// Perform the request
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Println("Error performing request:", err)
-		return 0
+		return
 	}
 	defer resp.Body.Close()
 
@@ -47,7 +46,7 @@ func Collect() float64 {
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Println("Error reading response body:", err)
-		return 0
+		return
 	}
 
 	// Trim any leading characters that may cause the issue
@@ -62,19 +61,17 @@ func Collect() float64 {
 	}
 
 	// Iterate through the funds and find the one with ticker "BTC"
-	var btcShares Shares
 	for _, fund := range data.AaData {
 		if len(fund) > 0 && fund[0] == "BTC" {
 			// Extract the "Shares" field
 			sharesMap, ok := fund[6].(map[string]interface{})
 			if ok {
-				sharesDisplay, _ := sharesMap["display"].(string)
 				sharesRaw, _ := sharesMap["raw"].(float64)
-				btcShares = Shares{Display: sharesDisplay, Raw: sharesRaw}
+				result.TotalBitcoin = sharesRaw
 				break
 			}
 		}
 	}
 
-	return btcShares.Raw
+	return result
 }
