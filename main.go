@@ -13,7 +13,9 @@ import (
 	"github.com/jyap808/btcEtfScrape/arkb"
 	"github.com/jyap808/btcEtfScrape/bitb"
 	"github.com/jyap808/btcEtfScrape/cmebrrny"
+	"github.com/jyap808/btcEtfScrape/ezbc"
 	"github.com/jyap808/btcEtfScrape/gbtc"
+	"github.com/jyap808/btcEtfScrape/hodl"
 	"github.com/jyap808/btcEtfScrape/ibit"
 )
 
@@ -38,7 +40,9 @@ var (
 	// track
 	arkbResult    arkb.Result
 	bitbResult    bitb.Result
+	ezbcResult    ezbc.Result
 	gbtcResult    gbtc.Result
+	hodlResult    hodl.Result
 	ibitResult    ibit.Result
 	cmebrrnyPrice float64
 
@@ -58,12 +62,14 @@ func main() {
 	var wg sync.WaitGroup
 
 	// Increment the WaitGroup counter for each scraping function
-	wg.Add(4)
+	wg.Add(6)
 
 	// Launch goroutines for scraping functions
 	go handleArkb(&wg)
 	go handleBitb(&wg)
+	go handleEzbc(&wg)
 	go handleGbtc(&wg)
+	go handleHodl(&wg)
 	go handleIbit(&wg)
 
 	// Wait for all goroutines to finish
@@ -138,6 +144,40 @@ func handleBitb(wg *sync.WaitGroup) {
 	}
 }
 
+func handleEzbc(wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	for {
+		newResult := ezbc.Collect()
+
+		if newResult.TotalBitcoin != ezbcResult.TotalBitcoin {
+			if ezbcResult.TotalBitcoin == 0 {
+				// initialize
+				ezbcResult = newResult
+				log.Printf("Initialize EZBC: %+v", ezbcResult)
+			} else {
+				// compare
+				bitcoinDiff := newResult.TotalBitcoin - ezbcResult.TotalBitcoin
+				cmebrrnyPrice = updateCMEBRRNYPrice()
+				flowDiff := bitcoinDiff * cmebrrnyPrice
+				layout := "01/02/2006"
+				formattedTime := newResult.Date.Format(layout)
+				msg := fmt.Sprintf("EZBC %s\nCHANGE Bitcoin: %.1f\nTOTAL Bitcoin: %.1f\nDETAILS Flow: $%.1f, CMEBRRNY: $%.1f",
+					formattedTime, bitcoinDiff, newResult.TotalBitcoin,
+					flowDiff, cmebrrnyPrice)
+
+				postEvent(msg)
+
+				ezbcResult = newResult
+
+				time.Sleep(time.Hour * time.Duration(backoffHours))
+			}
+		}
+
+		time.Sleep(time.Minute * time.Duration(pollMinutes))
+	}
+}
+
 func handleGbtc(wg *sync.WaitGroup) {
 	defer wg.Done() // Decrement the WaitGroup counter when the goroutine finishes
 
@@ -172,6 +212,40 @@ func handleGbtc(wg *sync.WaitGroup) {
 	}
 }
 
+func handleHodl(wg *sync.WaitGroup) {
+	defer wg.Done() // Decrement the WaitGroup counter when the goroutine finishes
+
+	for {
+		newResult := hodl.Collect()
+
+		if newResult.TotalBitcoin != hodlResult.TotalBitcoin {
+			if hodlResult.TotalBitcoin == 0 {
+				// initialize
+				hodlResult = newResult
+				log.Printf("Initialize HODL: %+v", hodlResult)
+			} else {
+				// compare
+				bitcoinDiff := newResult.TotalBitcoin - hodlResult.TotalBitcoin
+				cmebrrnyPrice = updateCMEBRRNYPrice()
+				flowDiff := bitcoinDiff * cmebrrnyPrice
+				layout := "01/02/2006"
+				formattedTime := newResult.Date.Format(layout)
+				msg := fmt.Sprintf("HODL %s\nCHANGE Bitcoin: %.1f\nTOTAL Bitcoin: %.1f\nDETAILS Flow: $%.1f, CMEBRRNY: $%.1f",
+					formattedTime, bitcoinDiff, newResult.TotalBitcoin,
+					flowDiff, cmebrrnyPrice)
+
+				postEvent(msg)
+
+				hodlResult = newResult
+
+				time.Sleep(time.Hour * time.Duration(backoffHours))
+			}
+		}
+
+		time.Sleep(time.Minute * time.Duration(pollMinutes))
+	}
+}
+
 func handleIbit(wg *sync.WaitGroup) {
 	defer wg.Done() // Decrement the WaitGroup counter when the goroutine finishes
 
@@ -187,8 +261,10 @@ func handleIbit(wg *sync.WaitGroup) {
 				// compare
 				bitcoinDiff := newResult.TotalBitcoin - ibitResult.TotalBitcoin
 				cmebrrnyPrice = updateCMEBRRNYPrice()
-				msg := fmt.Sprintf("IBIT\nCHANGE Bitcoin: %.1f\nTOTAL Bitcoin: %.1f\nDETAILS CMEBRRNY: $%.1f",
-					bitcoinDiff, newResult.TotalBitcoin, cmebrrnyPrice)
+				flowDiff := bitcoinDiff * cmebrrnyPrice
+				msg := fmt.Sprintf("IBIT\nCHANGE Bitcoin: %.1f\nTOTAL Bitcoin: %.1f\nDETAILS Flow: $%.1f, CMEBRRNY: $%.1f",
+					bitcoinDiff, newResult.TotalBitcoin,
+					flowDiff, cmebrrnyPrice)
 
 				postEvent(msg)
 

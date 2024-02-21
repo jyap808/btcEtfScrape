@@ -68,7 +68,7 @@ func Collect() (result Result) {
 			if ok {
 				sharesRaw, _ := sharesMap["raw"].(float64)
 				result.TotalBitcoin = sharesRaw
-				break
+				return
 			}
 		}
 	}
