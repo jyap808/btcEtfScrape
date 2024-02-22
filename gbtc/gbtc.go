@@ -52,11 +52,6 @@ func Collect() (result Result) {
 		}
 	})
 
-	// Set up error handling
-	c.OnError(func(r *colly.Response, err error) {
-		log.Println("Request URL:", r.Request.URL, "failed with response:", r, "\nError:", err)
-	})
-
 	// visiting the target page
 	c.Visit("https://etfs.grayscale.com/gbtc")
 

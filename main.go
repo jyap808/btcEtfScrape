@@ -12,6 +12,7 @@ import (
 
 	"github.com/jyap808/btcEtfScrape/arkb"
 	"github.com/jyap808/btcEtfScrape/bitb"
+	"github.com/jyap808/btcEtfScrape/brrr"
 	"github.com/jyap808/btcEtfScrape/cmebrrny"
 	"github.com/jyap808/btcEtfScrape/ezbc"
 	"github.com/jyap808/btcEtfScrape/gbtc"
@@ -40,6 +41,7 @@ var (
 	// track
 	arkbResult    arkb.Result
 	bitbResult    bitb.Result
+	brrrResult    brrr.Result
 	ezbcResult    ezbc.Result
 	gbtcResult    gbtc.Result
 	hodlResult    hodl.Result
@@ -62,11 +64,12 @@ func main() {
 	var wg sync.WaitGroup
 
 	// Increment the WaitGroup counter for each scraping function
-	wg.Add(6)
+	wg.Add(7)
 
 	// Launch goroutines for scraping functions
 	go handleArkb(&wg)
 	go handleBitb(&wg)
+	go handleBrrr(&wg)
 	go handleEzbc(&wg)
 	go handleGbtc(&wg)
 	go handleHodl(&wg)
@@ -135,6 +138,38 @@ func handleBitb(wg *sync.WaitGroup) {
 				postEvent(msg)
 
 				bitbResult = newResult
+
+				time.Sleep(time.Hour * time.Duration(backoffHours))
+			}
+		}
+
+		time.Sleep(time.Minute * time.Duration(pollMinutes))
+	}
+}
+
+func handleBrrr(wg *sync.WaitGroup) {
+	defer wg.Done() // Decrement the WaitGroup counter when the goroutine finishes
+
+	for {
+		newResult := brrr.Collect()
+
+		if newResult.TotalBitcoin != brrrResult.TotalBitcoin {
+			if brrrResult.TotalBitcoin == 0 {
+				// initialize
+				brrrResult = newResult
+				log.Printf("Initialize BRRR: %+v", brrrResult)
+			} else {
+				// compare
+				bitcoinDiff := newResult.TotalBitcoin - brrrResult.TotalBitcoin
+				cmebrrnyPrice = updateCMEBRRNYPrice()
+				flowDiff := bitcoinDiff * cmebrrnyPrice
+				msg := fmt.Sprintf("BRRR\nCHANGE Bitcoin: %.1f\nTOTAL Bitcoin: %.1f\nDETAILS Flow: $%.1f, CMEBRRNY: $%.1f",
+					bitcoinDiff, newResult.TotalBitcoin,
+					flowDiff, cmebrrnyPrice)
+
+				postEvent(msg)
+
+				brrrResult = newResult
 
 				time.Sleep(time.Hour * time.Duration(backoffHours))
 			}
