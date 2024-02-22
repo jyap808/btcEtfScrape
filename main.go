@@ -10,14 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jyap808/btcEtfScrape/arkb"
-	"github.com/jyap808/btcEtfScrape/bitb"
-	"github.com/jyap808/btcEtfScrape/brrr"
 	"github.com/jyap808/btcEtfScrape/cmebrrny"
-	"github.com/jyap808/btcEtfScrape/ezbc"
-	"github.com/jyap808/btcEtfScrape/gbtc"
-	"github.com/jyap808/btcEtfScrape/hodl"
-	"github.com/jyap808/btcEtfScrape/ibit"
+	"github.com/jyap808/btcEtfScrape/funds"
 	"github.com/jyap808/btcEtfScrape/types"
 )
 
@@ -68,13 +62,13 @@ func main() {
 	wg.Add(7)
 
 	// Launch goroutines for scraping functions
-	go handleFund(&wg, arkb.Collect, arkbResult, "ARKB")
-	go handleFund(&wg, bitb.Collect, bitbResult, "BITB")
-	go handleFund(&wg, brrr.Collect, brrrResult, "BRRR")
-	go handleFund(&wg, ezbc.Collect, ezbcResult, "EZBC")
-	go handleFund(&wg, gbtc.Collect, gbtcResult, "GBTC")
-	go handleFund(&wg, hodl.Collect, hodlResult, "HODL")
-	go handleFund(&wg, ibit.Collect, ibitResult, "IBIT")
+	go handleFund(&wg, funds.ArkbCollect, arkbResult, "ARKB")
+	go handleFund(&wg, funds.BitbCollect, bitbResult, "BITB")
+	go handleFund(&wg, funds.BrrrCollect, brrrResult, "BRRR")
+	go handleFund(&wg, funds.EzbcCollect, ezbcResult, "EZBC")
+	go handleFund(&wg, funds.GbtcCollect, gbtcResult, "GBTC")
+	go handleFund(&wg, funds.HodlCollect, hodlResult, "HODL")
+	go handleFund(&wg, funds.IbitCollect, ibitResult, "IBIT")
 
 	// Wait for all goroutines to finish
 	wg.Wait()
