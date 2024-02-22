@@ -5,13 +5,10 @@ import (
 	"strings"
 
 	"github.com/gocolly/colly"
+	"github.com/jyap808/btcEtfScrape/types"
 )
 
-type Result struct {
-	TotalBitcoin float64
-}
-
-func Collect() (result Result) {
+func Collect() (result types.Result) {
 	// Create a new collector
 	c := colly.NewCollector()
 

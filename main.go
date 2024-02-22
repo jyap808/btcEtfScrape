@@ -18,6 +18,7 @@ import (
 	"github.com/jyap808/btcEtfScrape/gbtc"
 	"github.com/jyap808/btcEtfScrape/hodl"
 	"github.com/jyap808/btcEtfScrape/ibit"
+	"github.com/jyap808/btcEtfScrape/types"
 )
 
 type payload struct {
@@ -39,13 +40,13 @@ var (
 	avatarURL      string
 
 	// track
-	arkbResult    arkb.Result
-	bitbResult    bitb.Result
-	brrrResult    brrr.Result
-	ezbcResult    ezbc.Result
-	gbtcResult    gbtc.Result
-	hodlResult    hodl.Result
-	ibitResult    ibit.Result
+	arkbResult    types.Result
+	bitbResult    types.Result
+	brrrResult    types.Result
+	ezbcResult    types.Result
+	gbtcResult    types.Result
+	hodlResult    types.Result
+	ibitResult    types.Result
 	cmebrrnyPrice float64
 
 	// polling intervals
@@ -67,13 +68,13 @@ func main() {
 	wg.Add(7)
 
 	// Launch goroutines for scraping functions
-	go handleArkb(&wg)
-	go handleBitb(&wg)
-	go handleBrrr(&wg)
-	go handleEzbc(&wg)
-	go handleGbtc(&wg)
-	go handleHodl(&wg)
-	go handleIbit(&wg)
+	go handleFund(&wg, arkb.Collect, arkbResult, "ARKB")
+	go handleFund(&wg, bitb.Collect, bitbResult, "BITB")
+	go handleFund(&wg, brrr.Collect, brrrResult, "BRRR")
+	go handleFund(&wg, ezbc.Collect, ezbcResult, "EZBC")
+	go handleFund(&wg, gbtc.Collect, gbtcResult, "GBTC")
+	go handleFund(&wg, hodl.Collect, hodlResult, "HODL")
+	go handleFund(&wg, ibit.Collect, ibitResult, "IBIT")
 
 	// Wait for all goroutines to finish
 	wg.Wait()
@@ -81,229 +82,39 @@ func main() {
 	log.Println("All scraping functions have finished.")
 }
 
-func handleArkb(wg *sync.WaitGroup) {
+// Generic handler
+func handleFund(wg *sync.WaitGroup, collector func() types.Result, fundResult types.Result, ticker string) {
 	defer wg.Done() // Decrement the WaitGroup counter when the goroutine finishes
 
 	for {
-		newResult := arkb.Collect()
+		newResult := collector()
 
-		if newResult.TotalBitcoin != arkbResult.TotalBitcoin {
-			if arkbResult.TotalBitcoin == 0 {
+		if newResult.TotalBitcoin != fundResult.TotalBitcoin {
+			if fundResult.TotalBitcoin == 0 {
 				// initialize
-				arkbResult = newResult
-				log.Printf("Initialize ARKB: %+v", arkbResult)
+				fundResult = newResult
+				log.Printf("Initialize %s: %+v", ticker, fundResult)
 			} else {
 				// compare
-				bitcoinDiff := newResult.TotalBitcoin - arkbResult.TotalBitcoin
+				bitcoinDiff := newResult.TotalBitcoin - fundResult.TotalBitcoin
 				cmebrrnyPrice = updateCMEBRRNYPrice()
 				flowDiff := bitcoinDiff * cmebrrnyPrice
-				layout := "01/02/2006"
-				formattedTime := newResult.Date.Format(layout)
-				msg := fmt.Sprintf("ARKB %s\nCHANGE Bitcoin: %.1f\nTOTAL Bitcoin: %.1f\nDETAILS Flow: $%.1f, CMEBRRNY: $%.1f",
-					formattedTime, bitcoinDiff, newResult.TotalBitcoin,
+
+				header := ticker
+				if newResult.Date != (time.Time{}) {
+					layout := "01/02/2006"
+					formattedTime := newResult.Date.Format(layout)
+
+					header = fmt.Sprintf("%s %s", ticker, formattedTime)
+				}
+
+				msg := fmt.Sprintf("%s\nCHANGE Bitcoin: %.1f\nTOTAL Bitcoin: %.1f\nDETAILS Flow: $%.1f, CMEBRRNY: $%.1f",
+					header, bitcoinDiff, newResult.TotalBitcoin,
 					flowDiff, cmebrrnyPrice)
 
 				postEvent(msg)
 
-				arkbResult = newResult
-
-				time.Sleep(time.Hour * time.Duration(backoffHours))
-			}
-		}
-
-		time.Sleep(time.Minute * time.Duration(pollMinutes))
-	}
-}
-
-func handleBitb(wg *sync.WaitGroup) {
-	defer wg.Done() // Decrement the WaitGroup counter when the goroutine finishes
-
-	for {
-		newResult := bitb.Collect()
-
-		if newResult.TotalBitcoin != bitbResult.TotalBitcoin {
-			if bitbResult.TotalBitcoin == 0 {
-				// initialize
-				bitbResult = newResult
-				log.Printf("Initialize BITB: %+v", bitbResult)
-			} else {
-				// compare
-				bitcoinDiff := newResult.TotalBitcoin - bitbResult.TotalBitcoin
-				cmebrrnyPrice = updateCMEBRRNYPrice()
-				flowDiff := bitcoinDiff * cmebrrnyPrice
-				msg := fmt.Sprintf("BITB\nCHANGE Bitcoin: %.1f\nTOTAL Bitcoin: %.1f\nDETAILS Flow: $%.1f, CMEBRRNY: $%.1f",
-					bitcoinDiff, newResult.TotalBitcoin,
-					flowDiff, cmebrrnyPrice)
-
-				postEvent(msg)
-
-				bitbResult = newResult
-
-				time.Sleep(time.Hour * time.Duration(backoffHours))
-			}
-		}
-
-		time.Sleep(time.Minute * time.Duration(pollMinutes))
-	}
-}
-
-func handleBrrr(wg *sync.WaitGroup) {
-	defer wg.Done() // Decrement the WaitGroup counter when the goroutine finishes
-
-	for {
-		newResult := brrr.Collect()
-
-		if newResult.TotalBitcoin != brrrResult.TotalBitcoin {
-			if brrrResult.TotalBitcoin == 0 {
-				// initialize
-				brrrResult = newResult
-				log.Printf("Initialize BRRR: %+v", brrrResult)
-			} else {
-				// compare
-				bitcoinDiff := newResult.TotalBitcoin - brrrResult.TotalBitcoin
-				cmebrrnyPrice = updateCMEBRRNYPrice()
-				flowDiff := bitcoinDiff * cmebrrnyPrice
-				msg := fmt.Sprintf("BRRR\nCHANGE Bitcoin: %.1f\nTOTAL Bitcoin: %.1f\nDETAILS Flow: $%.1f, CMEBRRNY: $%.1f",
-					bitcoinDiff, newResult.TotalBitcoin,
-					flowDiff, cmebrrnyPrice)
-
-				postEvent(msg)
-
-				brrrResult = newResult
-
-				time.Sleep(time.Hour * time.Duration(backoffHours))
-			}
-		}
-
-		time.Sleep(time.Minute * time.Duration(pollMinutes))
-	}
-}
-
-func handleEzbc(wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	for {
-		newResult := ezbc.Collect()
-
-		if newResult.TotalBitcoin != ezbcResult.TotalBitcoin {
-			if ezbcResult.TotalBitcoin == 0 {
-				// initialize
-				ezbcResult = newResult
-				log.Printf("Initialize EZBC: %+v", ezbcResult)
-			} else {
-				// compare
-				bitcoinDiff := newResult.TotalBitcoin - ezbcResult.TotalBitcoin
-				cmebrrnyPrice = updateCMEBRRNYPrice()
-				flowDiff := bitcoinDiff * cmebrrnyPrice
-				layout := "01/02/2006"
-				formattedTime := newResult.Date.Format(layout)
-				msg := fmt.Sprintf("EZBC %s\nCHANGE Bitcoin: %.1f\nTOTAL Bitcoin: %.1f\nDETAILS Flow: $%.1f, CMEBRRNY: $%.1f",
-					formattedTime, bitcoinDiff, newResult.TotalBitcoin,
-					flowDiff, cmebrrnyPrice)
-
-				postEvent(msg)
-
-				ezbcResult = newResult
-
-				time.Sleep(time.Hour * time.Duration(backoffHours))
-			}
-		}
-
-		time.Sleep(time.Minute * time.Duration(pollMinutes))
-	}
-}
-
-func handleGbtc(wg *sync.WaitGroup) {
-	defer wg.Done() // Decrement the WaitGroup counter when the goroutine finishes
-
-	for {
-		newResult := gbtc.Collect()
-
-		if newResult.TotalBitcoin != gbtcResult.TotalBitcoin {
-			if gbtcResult.TotalBitcoin == 0 {
-				// initialize
-				gbtcResult = newResult
-				log.Printf("Initialize GBTC: %+v", gbtcResult)
-			} else {
-				// compare
-				bitcoinDiff := newResult.TotalBitcoin - gbtcResult.TotalBitcoin
-				cmebrrnyPrice = updateCMEBRRNYPrice()
-				flowDiff := bitcoinDiff * cmebrrnyPrice
-				layout := "01/02/2006"
-				formattedTime := newResult.Date.Format(layout)
-				msg := fmt.Sprintf("GBTC %s\nCHANGE Bitcoin: %.1f\nTOTAL Bitcoin: %.1f\nDETAILS Flow: $%.1f, CMEBRRNY: $%.1f",
-					formattedTime, bitcoinDiff, newResult.TotalBitcoin,
-					flowDiff, cmebrrnyPrice)
-
-				postEvent(msg)
-
-				gbtcResult = newResult
-
-				time.Sleep(time.Hour * time.Duration(backoffHours))
-			}
-		}
-
-		time.Sleep(time.Minute * time.Duration(pollMinutes))
-	}
-}
-
-func handleHodl(wg *sync.WaitGroup) {
-	defer wg.Done() // Decrement the WaitGroup counter when the goroutine finishes
-
-	for {
-		newResult := hodl.Collect()
-
-		if newResult.TotalBitcoin != hodlResult.TotalBitcoin {
-			if hodlResult.TotalBitcoin == 0 {
-				// initialize
-				hodlResult = newResult
-				log.Printf("Initialize HODL: %+v", hodlResult)
-			} else {
-				// compare
-				bitcoinDiff := newResult.TotalBitcoin - hodlResult.TotalBitcoin
-				cmebrrnyPrice = updateCMEBRRNYPrice()
-				flowDiff := bitcoinDiff * cmebrrnyPrice
-				layout := "01/02/2006"
-				formattedTime := newResult.Date.Format(layout)
-				msg := fmt.Sprintf("HODL %s\nCHANGE Bitcoin: %.1f\nTOTAL Bitcoin: %.1f\nDETAILS Flow: $%.1f, CMEBRRNY: $%.1f",
-					formattedTime, bitcoinDiff, newResult.TotalBitcoin,
-					flowDiff, cmebrrnyPrice)
-
-				postEvent(msg)
-
-				hodlResult = newResult
-
-				time.Sleep(time.Hour * time.Duration(backoffHours))
-			}
-		}
-
-		time.Sleep(time.Minute * time.Duration(pollMinutes))
-	}
-}
-
-func handleIbit(wg *sync.WaitGroup) {
-	defer wg.Done() // Decrement the WaitGroup counter when the goroutine finishes
-
-	for {
-		newResult := ibit.Collect()
-
-		if newResult.TotalBitcoin != ibitResult.TotalBitcoin {
-			if ibitResult.TotalBitcoin == 0 {
-				// initialize
-				ibitResult = newResult
-				log.Printf("Initialize IBIT: %+v", ibitResult)
-			} else {
-				// compare
-				bitcoinDiff := newResult.TotalBitcoin - ibitResult.TotalBitcoin
-				cmebrrnyPrice = updateCMEBRRNYPrice()
-				flowDiff := bitcoinDiff * cmebrrnyPrice
-				msg := fmt.Sprintf("IBIT\nCHANGE Bitcoin: %.1f\nTOTAL Bitcoin: %.1f\nDETAILS Flow: $%.1f, CMEBRRNY: $%.1f",
-					bitcoinDiff, newResult.TotalBitcoin,
-					flowDiff, cmebrrnyPrice)
-
-				postEvent(msg)
-
-				ibitResult = newResult
+				fundResult = newResult
 
 				time.Sleep(time.Hour * time.Duration(backoffHours))
 			}

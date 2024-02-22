@@ -8,14 +8,11 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/jyap808/btcEtfScrape/types"
 )
 
-type Result struct {
-	TotalBitcoin float64
-	Date         time.Time
-}
-
-func Collect() (result Result) {
+func Collect() (result types.Result) {
 	url := "https://ark-funds.com/wp-content/uploads/funds-etf-csv/ARK_21SHARES_BITCOIN_ETF_ARKB_HOLDINGS.csv"
 
 	// Create a new HTTP client
@@ -68,9 +65,9 @@ func Collect() (result Result) {
 			inputClean := strings.ReplaceAll(totalRaw, ",", "")
 			total, _ := strconv.ParseFloat(inputClean, 64)
 
-			result = Result{Date: parsedTime, TotalBitcoin: total}
+			result = types.Result{Date: parsedTime, TotalBitcoin: total}
+			return
 		}
-
 	}
 
 	return result

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gocolly/colly"
+	"github.com/jyap808/btcEtfScrape/types"
 )
 
 type nextData struct {
@@ -21,12 +22,7 @@ type nextData struct {
 	}
 }
 
-type Result struct {
-	TotalBitcoin float64
-	Date         time.Time
-}
-
-func Collect() (result Result) {
+func Collect() (result types.Result) {
 	// creating a new Colly instance
 	c := colly.NewCollector()
 
@@ -61,8 +57,8 @@ func Collect() (result Result) {
 }
 
 // findResultsInIncludes searches for the unique field within "includes"
-func findResultsInIncludes(includesData map[string]interface{}) (Result, error) {
-	result := &Result{}
+func findResultsInIncludes(includesData map[string]interface{}) (types.Result, error) {
+	result := &types.Result{}
 
 	for _, value := range includesData {
 		// Assuming the value is a map[string]interface{}
@@ -89,5 +85,5 @@ func findResultsInIncludes(includesData map[string]interface{}) (Result, error) 
 		}
 	}
 
-	return Result{}, fmt.Errorf("totalBitcoinInTrust not found within 'includes'")
+	return types.Result{}, fmt.Errorf("totalBitcoinInTrust not found within 'includes'")
 }

@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/jyap808/btcEtfScrape/types"
 )
 
 type FundData struct {
@@ -14,14 +16,10 @@ type FundData struct {
 
 type Fund struct {
 	Ticker string
-	Shares Result
+	Shares types.Result
 }
 
-type Result struct {
-	TotalBitcoin float64 `json:"raw"`
-}
-
-func Collect() (result Result) {
+func Collect() (result types.Result) {
 	url := "https://blackrock.com/us/financial-professionals/products/333011/fund/1500962885783.ajax?tab=all&fileType=json"
 
 	// Create a new HTTP client

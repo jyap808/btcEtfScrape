@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/jyap808/btcEtfScrape/types"
 )
 
 type FundData struct {
@@ -24,12 +26,7 @@ type Nav struct {
 	Value string
 }
 
-type Result struct {
-	TotalBitcoin float64
-	Date         time.Time
-}
-
-func Collect() (result Result) {
+func Collect() (result types.Result) {
 	url := "https://www.vaneck.com/Main/NavInformationBlock/GetContent/?blockid=252190&ticker=HODL"
 
 	// Create a new HTTP client

@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/jyap808/btcEtfScrape/types"
 )
 
 type FundData struct {
@@ -33,12 +35,7 @@ type Holding struct {
 	Quantity string `json:"quantityshrpar"`
 }
 
-type Result struct {
-	TotalBitcoin float64
-	Date         time.Time
-}
-
-func Collect() (result Result) {
+func Collect() (result types.Result) {
 	url := "https://www.franklintempleton.com/api/pds/price-and-performance?apikey=4ef35821-5244-41bc-a699-0192d002c3d1p&op=Holdings&id=14"
 
 	// JSON payload
