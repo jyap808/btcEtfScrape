@@ -2,17 +2,23 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/jyap808/btcEtfScrape/cmebrrny"
 	"github.com/jyap808/btcEtfScrape/funds"
 	"github.com/jyap808/btcEtfScrape/types"
+	"github.com/michimani/gotwi"
+	"github.com/michimani/gotwi/tweet/managetweet"
+	gotwiTypes "github.com/michimani/gotwi/tweet/managetweet/types"
 )
 
 type payload struct {
@@ -46,6 +52,21 @@ var (
 	// polling intervals
 	pollMinutes  int = 5
 	backoffHours int = 12
+
+	tickerDescription = map[string]string{
+		"ARKB": "Ark/21 Shares",
+		"BITB": "Bitwise",
+		"BRRR": "Valkyrie",
+		"EZBC": "Franklin",
+		"GBTC": "Grayscale",
+		"HODL": "VanEck",
+		"IBIT": "BlackRock",
+	}
+)
+
+const (
+	OAuthTokenEnvKeyName       = "GOTWI_ACCESS_TOKEN"
+	OAuthTokenSecretEnvKeyName = "GOTWI_ACCESS_TOKEN_SECRET"
 )
 
 func init() {
@@ -108,6 +129,18 @@ func handleFund(wg *sync.WaitGroup, collector func() types.Result, fundResult ty
 
 				postEvent(msg)
 
+				flowEmoji := "🚀"
+				if flowDiff < 0 {
+					flowEmoji = "👎"
+				}
+
+				xMsg := fmt.Sprintf("%s $%s\n\n%s FLOW: %s BTC, $%s\n🏦 TOTAL Bitcoin in Trust: %s $BTC",
+					tickerDescription[ticker], ticker,
+					flowEmoji, humanize.CommafWithDigits(bitcoinDiff, 2), humanize.CommafWithDigits(flowDiff, 0),
+					humanize.CommafWithDigits(newResult.TotalBitcoin, 1))
+
+				postTweet(xMsg)
+
 				fundResult = newResult
 
 				time.Sleep(time.Hour * time.Duration(backoffHours))
@@ -141,4 +174,28 @@ func postEvent(msg string) {
 		return
 	}
 	defer resp.Body.Close()
+}
+
+func postTweet(msg string) {
+	in := &gotwi.NewClientInput{
+		AuthenticationMethod: gotwi.AuthenMethodOAuth1UserContext,
+		OAuthToken:           os.Getenv(OAuthTokenEnvKeyName),
+		OAuthTokenSecret:     os.Getenv(OAuthTokenSecretEnvKeyName),
+	}
+
+	c, err := gotwi.NewClient(in)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	p := &gotwiTypes.CreateInput{
+		Text: gotwi.String(msg),
+	}
+
+	_, err = managetweet.Create(context.Background(), c, p)
+	if err != nil {
+		log.Println(err.Error())
+		return
+	}
 }
