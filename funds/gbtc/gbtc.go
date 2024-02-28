@@ -35,7 +35,7 @@ func Collect() (result types.Result) {
 		var data nextData //[string]interface{}
 		err := json.NewDecoder(strings.NewReader(nextDataContent)).Decode(&data)
 		if err != nil {
-			log.Fatal(err)
+			log.Println(err)
 		}
 
 		// Access the "includes" field
@@ -44,7 +44,7 @@ func Collect() (result types.Result) {
 		// Search for the value containing "totalBitcoinInTrust" within "includes"
 		result, err = findResultsInIncludes(includesData)
 		if err != nil {
-			log.Fatal(err)
+			log.Println(err)
 		}
 	})
 

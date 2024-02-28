@@ -51,7 +51,7 @@ func Collect() (result types.Result) {
 			break
 		}
 		if err != nil {
-			log.Fatal(err)
+			log.Println(err)
 		}
 
 		if i == 1 {

@@ -77,7 +77,7 @@ func Collect() (result types.Result) {
 
 	var data FundData
 	if err := json.Unmarshal([]byte(body), &data); err != nil {
-		log.Fatalf("Error unmarshalling JSON: %v", err)
+		log.Printf("Error unmarshalling JSON: %v", err)
 	}
 
 	// Iterate
