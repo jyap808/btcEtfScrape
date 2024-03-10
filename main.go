@@ -40,28 +40,30 @@ var (
 	avatarURL      string
 
 	// track
-	arkbResult    types.Result
-	bitbResult    types.Result
-	brrrResult    types.Result
-	ezbcResult    types.Result
-	gbtcResult    types.Result
-	hodlResult    types.Result
-	ibitResult    types.Result
-	cmebrrnyPrice float64
+	arkbResult types.Result
+	bitbResult types.Result
+	brrrResult types.Result
+	ezbcResult types.Result
+	gbtcResult types.Result
+	hodlResult types.Result
+	ibitResult types.Result
+	cmebrrnyRR cmebrrny.ReferenceRate
 
 	// polling intervals
 	pollMinutes  int = 5
 	backoffHours int = 12
 
 	tickerDescription = map[string]string{
-		"ARKB": "Ark/21 Shares",
-		"BITB": "Bitwise",
-		"BRRR": "Valkyrie",
-		"EZBC": "Franklin",
-		"GBTC": "Grayscale",
-		"HODL": "VanEck",
-		"IBIT": "BlackRock",
+		"ARKB": "Ark 21Shares", // ARK 21Shares Bitcoin ETF
+		"BITB": "Bitwise",      // Bitwise Bitcoin ETF
+		"BRRR": "Valkyrie",     // Valkyrie Bitcoin Fund
+		"EZBC": "Franklin",     // Franklin Bitcoin ETF
+		"GBTC": "Grayscale",    // Grayscale Bitcoin Trust
+		"HODL": "VanEck",       // VanEck Bitcoin Trust
+		"IBIT": "BlackRock",    // iShares Bitcoin Trust
 	}
+	// BTCO - Invesco Galaxy Bitcoin ETF
+	// FBTC - Fidelity Wise Origin Bitcoin Fund
 )
 
 const (
@@ -77,6 +79,11 @@ func init() {
 }
 
 func main() {
+	cmebrrnyRR = getCMEBRRNYRR()
+	if cmebrrnyRR.Value == 0 {
+		log.Fatalln("Error: CME BRR NY is 0")
+	}
+
 	var wg sync.WaitGroup
 
 	// Increment the WaitGroup counter for each scraping function
@@ -97,6 +104,30 @@ func main() {
 	log.Println("All scraping functions have finished.")
 }
 
+// Used when evaluating a fund handler
+func handleFundEvaluate(wg *sync.WaitGroup, collector func() types.Result, fundResult types.Result, ticker string) {
+	defer wg.Done() // Decrement the WaitGroup counter when the goroutine finishes
+
+	for {
+		newResult := collector()
+
+		if newResult.TotalBitcoin != fundResult.TotalBitcoin {
+			if fundResult.TotalBitcoin == 0 {
+				// initialize
+				fundResult = newResult
+				log.Printf("Initialize %s: %+v", ticker, fundResult)
+			} else {
+				fundResult = newResult
+				log.Printf("Update %s: %+v", ticker, fundResult)
+
+				time.Sleep(time.Hour * time.Duration(backoffHours))
+			}
+		}
+
+		time.Sleep(time.Minute * time.Duration(pollMinutes))
+	}
+}
+
 // Generic handler
 func handleFund(wg *sync.WaitGroup, collector func() types.Result, fundResult types.Result, ticker string) {
 	defer wg.Done() // Decrement the WaitGroup counter when the goroutine finishes
@@ -112,8 +143,8 @@ func handleFund(wg *sync.WaitGroup, collector func() types.Result, fundResult ty
 			} else {
 				// compare
 				bitcoinDiff := newResult.TotalBitcoin - fundResult.TotalBitcoin
-				cmebrrnyPrice = updateCMEBRRNYPrice()
-				flowDiff := bitcoinDiff * cmebrrnyPrice
+				rr := getCMEBRRNYRR()
+				flowDiff := bitcoinDiff * rr.Value
 
 				header := ticker
 				if newResult.Date != (time.Time{}) {
@@ -125,12 +156,12 @@ func handleFund(wg *sync.WaitGroup, collector func() types.Result, fundResult ty
 
 				msg := fmt.Sprintf("%s\nCHANGE Bitcoin: %.1f\nTOTAL Bitcoin: %.1f\nDETAILS Flow: $%.1f, CMEBRRNY: $%.1f",
 					header, bitcoinDiff, newResult.TotalBitcoin,
-					flowDiff, cmebrrnyPrice)
+					flowDiff, rr.Value)
 
 				postEvent(msg)
 
 				flowEmoji := "🚀"
-				if flowDiff < 0 {
+				if bitcoinDiff < 0 {
 					flowEmoji = "👎"
 				}
 
@@ -143,6 +174,8 @@ func handleFund(wg *sync.WaitGroup, collector func() types.Result, fundResult ty
 
 				fundResult = newResult
 
+				log.Printf("Update %s: %+v", ticker, fundResult)
+
 				time.Sleep(time.Hour * time.Duration(backoffHours))
 			}
 		}
@@ -151,9 +184,25 @@ func handleFund(wg *sync.WaitGroup, collector func() types.Result, fundResult ty
 	}
 }
 
-func updateCMEBRRNYPrice() float64 {
-	cmebrrnyPrice = cmebrrny.GetBRRYNY().Value
-	return cmebrrnyPrice
+func getCMEBRRNYRR() cmebrrny.ReferenceRate {
+	// Cache the value once every 24 hours
+	firstDate := time.Now()
+	secondDate := cmebrrnyRR.Date
+	difference := firstDate.Sub(secondDate)
+	if difference.Hours() < 24 {
+		return cmebrrnyRR
+	}
+
+	rr, err := cmebrrny.GetBRRYNY()
+	if err != nil {
+		return cmebrrny.ReferenceRate{}
+	}
+
+	cmebrrnyRR = rr
+
+	log.Println("Set CME BRR NY:", cmebrrnyRR)
+
+	return cmebrrnyRR
 }
 
 func postEvent(msg string) {
@@ -162,7 +211,7 @@ func postEvent(msg string) {
 	jsonReq := payload{Username: avatarUsername, AvatarURL: avatarURL, Embeds: embeds}
 
 	jsonStr, _ := json.Marshal(jsonReq)
-	log.Println("JSON POST:", string(jsonStr))
+	log.Println("Discord POST:", string(jsonStr))
 
 	req, _ := http.NewRequest("POST", webhookURL, bytes.NewBuffer(jsonStr))
 	req.Header.Set("Content-Type", "application/json")
@@ -192,6 +241,8 @@ func postTweet(msg string) {
 	p := &gotwiTypes.CreateInput{
 		Text: gotwi.String(msg),
 	}
+
+	log.Println("X Tweet:", msg)
 
 	_, err = managetweet.Create(context.Background(), c, p)
 	if err != nil {

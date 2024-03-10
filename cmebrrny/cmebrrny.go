@@ -42,7 +42,7 @@ func (rr *ReferenceRate) UnmarshalJSON(data []byte) error {
 }
 
 // Return the latest CME BRR NY
-func GetBRRYNY() (referenceRate ReferenceRate) {
+func GetBRRYNY() (referenceRate ReferenceRate, err error) {
 	url := "https://www.cmegroup.com/services/cryptocurrencies/reference-rates"
 
 	// Create a new HTTP client
@@ -52,18 +52,18 @@ func GetBRRYNY() (referenceRate ReferenceRate) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		log.Println("Error creating request:", err)
-		return
+		return ReferenceRate{}, err
 	}
 
 	// Set headers
 	req.Header.Set("Accept-Language", "en-US")
-	req.Header.Set("User-Agent", "Mozilla/5.0")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2.1 Safari/605.1.15")
 
 	// Perform the request
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Println("Error performing request:", err)
-		return
+		return ReferenceRate{}, err
 	}
 	defer resp.Body.Close()
 
@@ -71,14 +71,15 @@ func GetBRRYNY() (referenceRate ReferenceRate) {
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Println("Error reading response body:", err)
-		return
+		return ReferenceRate{}, err
 	}
 
 	// Parse JSON data into struct
 	var data map[string]ReferenceRates
 	if err := json.Unmarshal(body, &data); err != nil {
-		log.Fatalf("Error unmarshalling JSON: %v", err)
+		log.Printf("Error unmarshalling JSON: %v", err)
+		return ReferenceRate{}, err
 	}
 
-	return data["referenceRates"].BRRNY[0]
+	return data["referenceRates"].BRRNY[0], nil
 }
