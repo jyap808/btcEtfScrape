@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -33,6 +34,12 @@ type embed struct {
 	Description string `json:"description"`
 }
 
+// Define a struct type to hold details for each ticker
+type tickerDetail struct {
+	Description string
+	Note        string
+}
+
 var (
 	webhookURL string
 
@@ -43,6 +50,7 @@ var (
 	arkbResult types.Result
 	bitbResult types.Result
 	brrrResult types.Result
+	btcwResult types.Result
 	ezbcResult types.Result
 	gbtcResult types.Result
 	hodlResult types.Result
@@ -53,14 +61,15 @@ var (
 	pollMinutes  int = 5
 	backoffHours int = 12
 
-	tickerDescription = map[string]string{
-		"ARKB": "Ark 21Shares", // ARK 21Shares Bitcoin ETF
-		"BITB": "Bitwise",      // Bitwise Bitcoin ETF
-		"BRRR": "Valkyrie",     // Valkyrie Bitcoin Fund
-		"EZBC": "Franklin",     // Franklin Bitcoin ETF
-		"GBTC": "Grayscale",    // Grayscale Bitcoin Trust
-		"HODL": "VanEck",       // VanEck Bitcoin Trust
-		"IBIT": "BlackRock",    // iShares Bitcoin Trust
+	tickerDetails = map[string]tickerDetail{
+		"ARKB": {Description: "Ark 21Shares", Note: "ARKB holdings are usually updated 10+ hours after the close of trading"}, // ARK 21Shares Bitcoin ETF
+		"BITB": {Description: "Bitwise", Note: "BITB holdings are usually updated 4.5+ hours after the close of trading"},     // Bitwise Bitcoin ETF
+		"BRRR": {Description: "Valkyrie", Note: "BRRR holdings are usually updated 10+ hours after the close of trading"},     // Valkyrie Bitcoin Fund
+		"BTCW": {Description: "WisdomTree", Note: ""},                                                                         // WisdomTree Bitcoin Fund
+		"EZBC": {Description: "Franklin", Note: "EZBC holdings are usually updated 5.5+ hours after the close of trading"},    // Franklin Bitcoin ETF
+		"GBTC": {Description: "Grayscale", Note: "GBTC holdings are usually updated 1 day late"},                              // Grayscale Bitcoin Trust
+		"HODL": {Description: "VanEck", Note: "HODL holdings are usually updated 1 day late"},                                 // VanEck Bitcoin Trust
+		"IBIT": {Description: "BlackRock", Note: "IBIT holdings are usually updated 13+ hours after the close of trading"},    // iShares Bitcoin Trust
 	}
 	// BTCO - Invesco Galaxy Bitcoin ETF
 	// FBTC - Fidelity Wise Origin Bitcoin Fund
@@ -87,12 +96,13 @@ func main() {
 	var wg sync.WaitGroup
 
 	// Increment the WaitGroup counter for each scraping function
-	wg.Add(7)
+	wg.Add(8)
 
 	// Launch goroutines for scraping functions
 	go handleFund(&wg, funds.ArkbCollect, arkbResult, "ARKB")
 	go handleFund(&wg, funds.BitbCollect, bitbResult, "BITB")
 	go handleFund(&wg, funds.BrrrCollect, brrrResult, "BRRR")
+	go handleFund(&wg, funds.BtcwCollect, btcwResult, "BTCW")
 	go handleFund(&wg, funds.EzbcCollect, ezbcResult, "EZBC")
 	go handleFund(&wg, funds.GbtcCollect, gbtcResult, "GBTC")
 	go handleFund(&wg, funds.HodlCollect, hodlResult, "HODL")
@@ -135,7 +145,7 @@ func handleFund(wg *sync.WaitGroup, collector func() types.Result, fundResult ty
 	for {
 		newResult := collector()
 
-		if newResult.TotalBitcoin != fundResult.TotalBitcoin {
+		if newResult.TotalBitcoin != fundResult.TotalBitcoin && newResult.TotalBitcoin != 0 {
 			if fundResult.TotalBitcoin == 0 {
 				// initialize
 				fundResult = newResult
@@ -165,10 +175,10 @@ func handleFund(wg *sync.WaitGroup, collector func() types.Result, fundResult ty
 					flowEmoji = "👎"
 				}
 
-				xMsg := fmt.Sprintf("%s $%s\n\n%s FLOW: %s BTC, $%s\n🏦 TOTAL Bitcoin in Trust: %s $BTC",
-					tickerDescription[ticker], ticker,
+				xMsg := fmt.Sprintf("%s $%s\n\n%s FLOW: %s BTC, $%s\n🏦 TOTAL Bitcoin in Trust: %s $BTC\n\n%s",
+					tickerDetails[ticker].Description, ticker,
 					flowEmoji, humanize.CommafWithDigits(bitcoinDiff, 2), humanize.CommafWithDigits(flowDiff, 0),
-					humanize.CommafWithDigits(newResult.TotalBitcoin, 1))
+					humanize.CommafWithDigits(newResult.TotalBitcoin, 1), tickerDetails[ticker].Note)
 
 				postTweet(xMsg)
 
@@ -242,7 +252,9 @@ func postTweet(msg string) {
 		Text: gotwi.String(msg),
 	}
 
-	log.Println("X Tweet:", msg)
+	// Replace newline characters with spaces
+	logStr := strings.ReplaceAll(msg, "\n", " ")
+	log.Println("X Tweet:", logStr)
 
 	_, err = managetweet.Create(context.Background(), c, p)
 	if err != nil {

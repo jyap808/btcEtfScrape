@@ -4,6 +4,7 @@ import (
 	"github.com/jyap808/btcEtfScrape/funds/arkb"
 	"github.com/jyap808/btcEtfScrape/funds/bitb"
 	"github.com/jyap808/btcEtfScrape/funds/brrr"
+	"github.com/jyap808/btcEtfScrape/funds/btcw"
 	"github.com/jyap808/btcEtfScrape/funds/ezbc"
 	"github.com/jyap808/btcEtfScrape/funds/gbtc"
 	"github.com/jyap808/btcEtfScrape/funds/hodl"
@@ -21,6 +22,10 @@ func BitbCollect() types.Result {
 
 func BrrrCollect() types.Result {
 	return brrr.Collect()
+}
+
+func BtcwCollect() types.Result {
+	return btcw.Collect()
 }
 
 func EzbcCollect() types.Result {
