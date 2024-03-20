@@ -38,6 +38,7 @@ type embed struct {
 type tickerDetail struct {
 	Description string
 	Note        string
+	Delayed     bool
 }
 
 var (
@@ -55,7 +56,7 @@ var (
 	gbtcResult types.Result
 	hodlResult types.Result
 	ibitResult types.Result
-	cmebrrnyRR cmebrrny.ReferenceRate
+	cmebrrnyRR []cmebrrny.ReferenceRate
 
 	// polling intervals
 	pollMinutes  int = 5
@@ -67,8 +68,8 @@ var (
 		"BRRR": {Description: "Valkyrie", Note: "BRRR holdings are usually updated 10+ hours after the close of trading"},     // Valkyrie Bitcoin Fund
 		"BTCW": {Description: "WisdomTree", Note: ""},                                                                         // WisdomTree Bitcoin Fund
 		"EZBC": {Description: "Franklin", Note: "EZBC holdings are usually updated 5.5+ hours after the close of trading"},    // Franklin Bitcoin ETF
-		"GBTC": {Description: "Grayscale", Note: "GBTC holdings are usually updated 1 day late"},                              // Grayscale Bitcoin Trust
-		"HODL": {Description: "VanEck", Note: "HODL holdings are usually updated 1 day late"},                                 // VanEck Bitcoin Trust
+		"GBTC": {Description: "Grayscale", Note: "GBTC holdings are usually updated 1 day late", Delayed: true},               // Grayscale Bitcoin Trust
+		"HODL": {Description: "VanEck", Note: "HODL holdings are usually updated 1 day late", Delayed: true},                  // VanEck Bitcoin Trust
 		"IBIT": {Description: "BlackRock", Note: "IBIT holdings are usually updated 13+ hours after the close of trading"},    // iShares Bitcoin Trust
 	}
 	// BTCO - Invesco Galaxy Bitcoin ETF
@@ -89,7 +90,7 @@ func init() {
 
 func main() {
 	cmebrrnyRR = getCMEBRRNYRR()
-	if cmebrrnyRR.Value == 0 {
+	if cmebrrnyRR[0].Value == 0 {
 		log.Fatalln("Error: CME BRR NY is 0")
 	}
 
@@ -154,7 +155,11 @@ func handleFund(wg *sync.WaitGroup, collector func() types.Result, fundResult ty
 				// compare
 				bitcoinDiff := newResult.TotalBitcoin - fundResult.TotalBitcoin
 				rr := getCMEBRRNYRR()
-				flowDiff := bitcoinDiff * rr.Value
+				bitcoinPrice := rr[0].Value
+				if tickerDetails[ticker].Delayed {
+					bitcoinPrice = rr[1].Value
+				}
+				flowDiff := bitcoinDiff * bitcoinPrice
 
 				header := ticker
 				if newResult.Date != (time.Time{}) {
@@ -166,7 +171,7 @@ func handleFund(wg *sync.WaitGroup, collector func() types.Result, fundResult ty
 
 				msg := fmt.Sprintf("%s\nCHANGE Bitcoin: %.1f\nTOTAL Bitcoin: %.1f\nDETAILS Flow: $%.1f, CMEBRRNY: $%.1f",
 					header, bitcoinDiff, newResult.TotalBitcoin,
-					flowDiff, rr.Value)
+					flowDiff, rr[0].Value)
 
 				postEvent(msg)
 
@@ -194,18 +199,20 @@ func handleFund(wg *sync.WaitGroup, collector func() types.Result, fundResult ty
 	}
 }
 
-func getCMEBRRNYRR() cmebrrny.ReferenceRate {
-	// Cache the value once every 24 hours
-	firstDate := time.Now()
-	secondDate := cmebrrnyRR.Date
-	difference := firstDate.Sub(secondDate)
-	if difference.Hours() < 24 {
-		return cmebrrnyRR
+func getCMEBRRNYRR() []cmebrrny.ReferenceRate {
+	if len(cmebrrnyRR) > 0 {
+		// Cache the value once every 24 hours
+		firstDate := time.Now()
+		secondDate := cmebrrnyRR[0].Date
+		difference := firstDate.Sub(secondDate)
+		if difference.Hours() < 24 {
+			return cmebrrnyRR
+		}
 	}
 
 	rr, err := cmebrrny.GetBRRYNY()
 	if err != nil {
-		return cmebrrny.ReferenceRate{}
+		return []cmebrrny.ReferenceRate{}
 	}
 
 	cmebrrnyRR = rr
