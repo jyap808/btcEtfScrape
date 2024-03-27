@@ -53,6 +53,7 @@ var (
 	brrrResult types.Result
 	btcwResult types.Result
 	ezbcResult types.Result
+	fbtcResult types.Result
 	gbtcResult types.Result
 	hodlResult types.Result
 	ibitResult types.Result
@@ -68,12 +69,12 @@ var (
 		"BRRR": {Description: "Valkyrie", Note: "BRRR holdings are usually updated 10+ hours after the close of trading"},     // Valkyrie Bitcoin Fund
 		"BTCW": {Description: "WisdomTree", Note: ""},                                                                         // WisdomTree Bitcoin Fund
 		"EZBC": {Description: "Franklin", Note: "EZBC holdings are usually updated 5.5+ hours after the close of trading"},    // Franklin Bitcoin ETF
+		"FBTC": {Description: "Fidelity", Note: ""},                                                                           // Fidelity Wise Origin Bitcoin Fund
 		"GBTC": {Description: "Grayscale", Note: "GBTC holdings are usually updated 1 day late", Delayed: true},               // Grayscale Bitcoin Trust
 		"HODL": {Description: "VanEck", Note: "HODL holdings are usually updated 1 day late", Delayed: true},                  // VanEck Bitcoin Trust
 		"IBIT": {Description: "BlackRock", Note: "IBIT holdings are usually updated 13+ hours after the close of trading"},    // iShares Bitcoin Trust
 	}
 	// BTCO - Invesco Galaxy Bitcoin ETF
-	// FBTC - Fidelity Wise Origin Bitcoin Fund
 )
 
 const (
@@ -97,7 +98,7 @@ func main() {
 	var wg sync.WaitGroup
 
 	// Increment the WaitGroup counter for each scraping function
-	wg.Add(8)
+	wg.Add(9)
 
 	// Launch goroutines for scraping functions
 	go handleFund(&wg, funds.ArkbCollect, arkbResult, "ARKB")
@@ -105,6 +106,7 @@ func main() {
 	go handleFund(&wg, funds.BrrrCollect, brrrResult, "BRRR")
 	go handleFund(&wg, funds.BtcwCollect, btcwResult, "BTCW")
 	go handleFund(&wg, funds.EzbcCollect, ezbcResult, "EZBC")
+	go handleFund(&wg, funds.FbtcCollect, fbtcResult, "FBTC")
 	go handleFund(&wg, funds.GbtcCollect, gbtcResult, "GBTC")
 	go handleFund(&wg, funds.HodlCollect, hodlResult, "HODL")
 	go handleFund(&wg, funds.IbitCollect, ibitResult, "IBIT")

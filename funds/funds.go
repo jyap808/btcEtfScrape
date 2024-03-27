@@ -6,6 +6,7 @@ import (
 	"github.com/jyap808/btcEtfScrape/funds/brrr"
 	"github.com/jyap808/btcEtfScrape/funds/btcw"
 	"github.com/jyap808/btcEtfScrape/funds/ezbc"
+	"github.com/jyap808/btcEtfScrape/funds/fbtc"
 	"github.com/jyap808/btcEtfScrape/funds/gbtc"
 	"github.com/jyap808/btcEtfScrape/funds/hodl"
 	"github.com/jyap808/btcEtfScrape/funds/ibit"
@@ -30,6 +31,10 @@ func BtcwCollect() types.Result {
 
 func EzbcCollect() types.Result {
 	return ezbc.Collect()
+}
+
+func FbtcCollect() types.Result {
+	return fbtc.Collect()
 }
 
 func GbtcCollect() types.Result {
