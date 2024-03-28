@@ -52,6 +52,7 @@ var (
 	bitbResult types.Result
 	brrrResult types.Result
 	btcwResult types.Result
+	defiResult types.Result
 	ezbcResult types.Result
 	fbtcResult types.Result
 	gbtcResult types.Result
@@ -68,8 +69,9 @@ var (
 		"BITB": {Description: "Bitwise", Note: "BITB holdings are usually updated 4.5+ hours after the close of trading"},     // Bitwise Bitcoin ETF
 		"BRRR": {Description: "Valkyrie", Note: "BRRR holdings are usually updated 10+ hours after the close of trading"},     // Valkyrie Bitcoin Fund
 		"BTCW": {Description: "WisdomTree", Note: ""},                                                                         // WisdomTree Bitcoin Fund
+		"DEFI": {Description: "Hashdex", Note: ""},                                                                            // Hashdex Bitcoin ETF
 		"EZBC": {Description: "Franklin", Note: "EZBC holdings are usually updated 5.5+ hours after the close of trading"},    // Franklin Bitcoin ETF
-		"FBTC": {Description: "Fidelity", Note: ""},                                                                           // Fidelity Wise Origin Bitcoin Fund
+		"FBTC": {Description: "Fidelity", Note: "FBTC holdings are usually updated 16+ hours after the close of trading"},     // Fidelity Wise Origin Bitcoin Fund
 		"GBTC": {Description: "Grayscale", Note: "GBTC holdings are usually updated 1 day late", Delayed: true},               // Grayscale Bitcoin Trust
 		"HODL": {Description: "VanEck", Note: "HODL holdings are usually updated 1 day late", Delayed: true},                  // VanEck Bitcoin Trust
 		"IBIT": {Description: "BlackRock", Note: "IBIT holdings are usually updated 13+ hours after the close of trading"},    // iShares Bitcoin Trust
@@ -98,13 +100,14 @@ func main() {
 	var wg sync.WaitGroup
 
 	// Increment the WaitGroup counter for each scraping function
-	wg.Add(9)
+	wg.Add(10)
 
 	// Launch goroutines for scraping functions
 	go handleFund(&wg, funds.ArkbCollect, arkbResult, "ARKB")
 	go handleFund(&wg, funds.BitbCollect, bitbResult, "BITB")
 	go handleFund(&wg, funds.BrrrCollect, brrrResult, "BRRR")
 	go handleFund(&wg, funds.BtcwCollect, btcwResult, "BTCW")
+	go handleFund(&wg, funds.DefiCollect, defiResult, "DEFI")
 	go handleFund(&wg, funds.EzbcCollect, ezbcResult, "EZBC")
 	go handleFund(&wg, funds.FbtcCollect, fbtcResult, "FBTC")
 	go handleFund(&wg, funds.GbtcCollect, gbtcResult, "GBTC")
