@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gocolly/colly"
+	"github.com/gocolly/colly/v2"
 	"github.com/jyap808/btcEtfScrape/types"
 )
 

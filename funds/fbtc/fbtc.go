@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gocolly/colly"
+	"github.com/gocolly/colly/v2"
 	"github.com/jyap808/btcEtfScrape/types"
 
 	"github.com/ledongthuc/pdf"
