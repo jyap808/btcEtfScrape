@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -34,7 +35,12 @@ type embed struct {
 	Description string `json:"description"`
 }
 
-// Define a struct type to hold details for each ticker
+type overrideData struct {
+	Ticker       string
+	TotalBitcoin float64
+}
+
+// Hold details for each ticker
 type tickerDetail struct {
 	Description string
 	Note        string
@@ -48,17 +54,8 @@ var (
 	avatarURL      string
 
 	// track
-	arkbResult types.Result
-	bitbResult types.Result
-	brrrResult types.Result
-	btcwResult types.Result
-	defiResult types.Result
-	ezbcResult types.Result
-	fbtcResult types.Result
-	gbtcResult types.Result
-	hodlResult types.Result
-	ibitResult types.Result
-	cmebrrnyRR []cmebrrny.ReferenceRate
+	tickerResults = map[string]types.Result{}
+	cmebrrnyRR    []cmebrrny.ReferenceRate
 
 	// polling intervals
 	pollMinutes  int = 5
@@ -92,6 +89,12 @@ func init() {
 }
 
 func main() {
+	// Initialize empty tickerResult
+	for ticker := range tickerDetails {
+		tickerResults[ticker] = types.Result{}
+	}
+
+	// Initialize cmebrrnyRR
 	cmebrrnyRR = getCMEBRRNYRR()
 	if cmebrrnyRR[0].Value == 0 {
 		log.Fatalln("Error: CME BRR NY is 0")
@@ -103,16 +106,26 @@ func main() {
 	wg.Add(10)
 
 	// Launch goroutines for scraping functions
-	go handleFund(&wg, funds.ArkbCollect, arkbResult, "ARKB")
-	go handleFund(&wg, funds.BitbCollect, bitbResult, "BITB")
-	go handleFund(&wg, funds.BrrrCollect, brrrResult, "BRRR")
-	go handleFund(&wg, funds.BtcwCollect, btcwResult, "BTCW")
-	go handleFund(&wg, funds.DefiCollect, defiResult, "DEFI")
-	go handleFund(&wg, funds.EzbcCollect, ezbcResult, "EZBC")
-	go handleFund(&wg, funds.FbtcCollect, fbtcResult, "FBTC")
-	go handleFund(&wg, funds.GbtcCollect, gbtcResult, "GBTC")
-	go handleFund(&wg, funds.HodlCollect, hodlResult, "HODL")
-	go handleFund(&wg, funds.IbitCollect, ibitResult, "IBIT")
+	go handleFund(&wg, funds.ArkbCollect, "ARKB")
+	go handleFund(&wg, funds.BitbCollect, "BITB")
+	go handleFund(&wg, funds.BrrrCollect, "BRRR")
+	go handleFund(&wg, funds.BtcwCollect, "BTCW")
+	go handleFund(&wg, funds.DefiCollect, "DEFI")
+	go handleFund(&wg, funds.EzbcCollect, "EZBC")
+	go handleFund(&wg, funds.FbtcCollect, "FBTC")
+	go handleFund(&wg, funds.GbtcCollect, "GBTC")
+	go handleFund(&wg, funds.HodlCollect, "HODL")
+	go handleFund(&wg, funds.IbitCollect, "IBIT")
+
+	// Override endpoint
+	http.HandleFunc("/override", handleOverride)
+
+	// Start HTTP server in a separate goroutine
+	go func() {
+		if err := http.ListenAndServe(":8080", nil); err != nil {
+			log.Fatalf("HTTP server error: %v", err)
+		}
+	}()
 
 	// Wait for all goroutines to finish
 	wg.Wait()
@@ -120,45 +133,35 @@ func main() {
 	log.Println("All scraping functions have finished.")
 }
 
-// Used when evaluating a fund handler
-func handleFundEvaluate(wg *sync.WaitGroup, collector func() types.Result, fundResult types.Result, ticker string) {
+// Generic handler
+func handleFund(wg *sync.WaitGroup, collector func() types.Result, ticker string) {
 	defer wg.Done() // Decrement the WaitGroup counter when the goroutine finishes
 
 	for {
-		newResult := collector()
+		var newResult types.Result
+		override := false
 
-		if newResult.TotalBitcoin != fundResult.TotalBitcoin {
-			if fundResult.TotalBitcoin == 0 {
-				// initialize
-				fundResult = newResult
-				log.Printf("Initialize %s: %+v", ticker, fundResult)
-			} else {
-				fundResult = newResult
-				log.Printf("Update %s: %+v", ticker, fundResult)
+		// Check if there is a manual override set
+		if tickerResults[ticker].TotalBitcoinOverride != 0 {
+			newResult.TotalBitcoin = tickerResults[ticker].TotalBitcoinOverride
 
-				time.Sleep(time.Hour * time.Duration(backoffHours))
-			}
+			// Clear override value but maintain old data
+			current := tickerResults[ticker]
+			current.TotalBitcoinOverride = 0
+			tickerResults[ticker] = current
+			override = true
+		} else {
+			newResult = collector()
 		}
 
-		time.Sleep(time.Minute * time.Duration(pollMinutes))
-	}
-}
-
-// Generic handler
-func handleFund(wg *sync.WaitGroup, collector func() types.Result, fundResult types.Result, ticker string) {
-	defer wg.Done() // Decrement the WaitGroup counter when the goroutine finishes
-
-	for {
-		newResult := collector()
-
-		if newResult.TotalBitcoin != fundResult.TotalBitcoin && newResult.TotalBitcoin != 0 {
-			if fundResult.TotalBitcoin == 0 {
+		if newResult.TotalBitcoin != tickerResults[ticker].TotalBitcoin && newResult.TotalBitcoin != 0 {
+			if tickerResults[ticker].TotalBitcoin == 0 {
 				// initialize
-				fundResult = newResult
-				log.Printf("Initialize %s: %+v", ticker, fundResult)
+				tickerResults[ticker] = newResult
+				log.Printf("Initialize %s: %+v", ticker, tickerResults[ticker])
 			} else {
 				// compare
-				bitcoinDiff := newResult.TotalBitcoin - fundResult.TotalBitcoin
+				bitcoinDiff := newResult.TotalBitcoin - tickerResults[ticker].TotalBitcoin
 				rr := getCMEBRRNYRR()
 				bitcoinPrice := rr[0].Value
 				if tickerDetails[ticker].Delayed {
@@ -178,23 +181,28 @@ func handleFund(wg *sync.WaitGroup, collector func() types.Result, fundResult ty
 					header, bitcoinDiff, newResult.TotalBitcoin,
 					flowDiff, rr[0].Value)
 
-				postEvent(msg)
+				postDiscord(msg)
 
 				flowEmoji := "🚀"
 				if bitcoinDiff < 0 {
 					flowEmoji = "👎"
 				}
 
+				note := ""
+				if !override {
+					note = tickerDetails[ticker].Note
+				}
+
 				xMsg := fmt.Sprintf("%s $%s\n\n%s FLOW: %s BTC, $%s\n🏦 TOTAL Bitcoin in Trust: %s $BTC\n\n%s",
 					tickerDetails[ticker].Description, ticker,
 					flowEmoji, humanize.CommafWithDigits(bitcoinDiff, 2), humanize.CommafWithDigits(flowDiff, 0),
-					humanize.CommafWithDigits(newResult.TotalBitcoin, 1), tickerDetails[ticker].Note)
+					humanize.CommafWithDigits(newResult.TotalBitcoin, 1), note)
 
 				postTweet(xMsg)
 
-				fundResult = newResult
+				tickerResults[ticker] = newResult
 
-				log.Printf("Update %s: %+v", ticker, fundResult)
+				log.Printf("Update %s: %+v", ticker, tickerResults[ticker])
 
 				time.Sleep(time.Hour * time.Duration(backoffHours))
 			}
@@ -202,6 +210,33 @@ func handleFund(wg *sync.WaitGroup, collector func() types.Result, fundResult ty
 
 		time.Sleep(time.Minute * time.Duration(pollMinutes))
 	}
+}
+
+func handleOverride(w http.ResponseWriter, r *http.Request) {
+	var data overrideData
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("Error reading request body: %v", err)
+		http.Error(w, "Error reading request body", http.StatusInternalServerError)
+		return
+	}
+	defer r.Body.Close()
+
+	if err := json.Unmarshal(body, &data); err != nil {
+		log.Printf("Error unmarshalling JSON: %v", err)
+		return
+	}
+
+	// Set override value but maintain old data
+	current := tickerResults[data.Ticker]
+	current.TotalBitcoinOverride = data.TotalBitcoin
+	tickerResults[data.Ticker] = current
+	log.Printf("Data override %s: %+v", data.Ticker, tickerResults[data.Ticker])
+
+	// Respond with success message
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintln(w, "Data override successful")
 }
 
 func getCMEBRRNYRR() []cmebrrny.ReferenceRate {
@@ -227,7 +262,7 @@ func getCMEBRRNYRR() []cmebrrny.ReferenceRate {
 	return cmebrrnyRR
 }
 
-func postEvent(msg string) {
+func postDiscord(msg string) {
 	blockEmbed := embed{Description: msg}
 	embeds := []embed{blockEmbed}
 	jsonReq := payload{Username: avatarUsername, AvatarURL: avatarURL, Embeds: embeds}
