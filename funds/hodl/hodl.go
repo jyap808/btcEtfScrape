@@ -29,8 +29,12 @@ type Nav struct {
 func Collect() (result types.Result) {
 	url := "https://www.vaneck.com/Main/NavInformationBlock/GetContent/?blockid=252190&ticker=HODL"
 
-	// Create a new HTTP client
-	client := http.Client{}
+	// NOTE: Fix for getting old cached responses from this endpoint
+	client := &http.Client{
+		Transport: &http.Transport{
+			DisableCompression: true,
+		},
+	}
 
 	// Create a new GET request
 	req, err := http.NewRequest("GET", url, nil)
