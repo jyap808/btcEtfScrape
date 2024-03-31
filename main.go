@@ -90,8 +90,10 @@ func init() {
 
 func main() {
 	// Initialize empty tickerResult
+	wgCount := 0
 	for ticker := range tickerDetails {
 		tickerResults[ticker] = types.Result{}
+		wgCount++
 	}
 
 	// Initialize cmebrrnyRR
@@ -103,7 +105,7 @@ func main() {
 	var wg sync.WaitGroup
 
 	// Increment the WaitGroup counter for each scraping function
-	wg.Add(10)
+	wg.Add(wgCount)
 
 	// Launch goroutines for scraping functions
 	go handleFund(&wg, funds.ArkbCollect, "ARKB")
