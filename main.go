@@ -35,9 +35,9 @@ type embed struct {
 	Description string `json:"description"`
 }
 
-type overrideData struct {
-	Ticker       string
-	TotalBitcoin float64
+type manualData struct {
+	Ticker string
+	Result types.Result
 }
 
 // Hold details for each ticker
@@ -54,8 +54,9 @@ var (
 	avatarURL      string
 
 	// track
-	tickerResults = map[string]types.Result{}
-	cmebrrnyRR    []cmebrrny.ReferenceRate
+	tickerResults         = map[string]types.Result{}
+	tickerResultsOverride = map[string]types.Result{}
+	cmebrrnyRR            []cmebrrny.ReferenceRate
 
 	// polling intervals
 	pollMinutes  int = 5
@@ -93,6 +94,7 @@ func main() {
 	wgCount := 0
 	for ticker := range tickerDetails {
 		tickerResults[ticker] = types.Result{}
+		tickerResultsOverride[ticker] = types.Result{}
 		wgCount++
 	}
 
@@ -119,8 +121,9 @@ func main() {
 	go handleFund(&wg, funds.HodlCollect, "HODL")
 	go handleFund(&wg, funds.IbitCollect, "IBIT")
 
-	// Override endpoint
+	// Manual endpoints
 	http.HandleFunc("/override", handleOverride)
+	http.HandleFunc("/update", handleUpdate)
 
 	// Start HTTP server in a separate goroutine
 	go func() {
@@ -144,16 +147,24 @@ func handleFund(wg *sync.WaitGroup, collector func() types.Result, ticker string
 		override := false
 
 		// Check if there is a manual override set
-		if tickerResults[ticker].TotalBitcoinOverride != 0 {
-			newResult.TotalBitcoin = tickerResults[ticker].TotalBitcoinOverride
+		if tickerResultsOverride[ticker].TotalBitcoin != 0 {
+			newResult = tickerResultsOverride[ticker]
 
-			// Clear override value but maintain old data
-			current := tickerResults[ticker]
-			current.TotalBitcoinOverride = 0
-			tickerResults[ticker] = current
+			// Clear override
+			tickerResultsOverride[ticker] = types.Result{}
 			override = true
 		} else {
 			newResult = collector()
+		}
+
+		// Check date is valid. Date is optional so we check it is not none
+		if !newResult.Date.IsZero() && newResult.Date.Before(tickerResults[ticker].Date) {
+			log.Printf("%s new result before current: %+v", ticker, newResult)
+
+			// Backoff for 1 hr or this just will loop
+			time.Sleep(time.Hour * time.Duration(1))
+
+			continue
 		}
 
 		if newResult.TotalBitcoin != tickerResults[ticker].TotalBitcoin && newResult.TotalBitcoin != 0 {
@@ -214,8 +225,8 @@ func handleFund(wg *sync.WaitGroup, collector func() types.Result, ticker string
 	}
 }
 
-func handleOverride(w http.ResponseWriter, r *http.Request) {
-	var data overrideData
+func handleData(w http.ResponseWriter, r *http.Request, updateType string) {
+	var data manualData
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -230,15 +241,34 @@ func handleOverride(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Set override value but maintain old data
-	current := tickerResults[data.Ticker]
-	current.TotalBitcoinOverride = data.TotalBitcoin
-	tickerResults[data.Ticker] = current
-	log.Printf("Data override %s: %+v", data.Ticker, tickerResults[data.Ticker])
+	// Set based on updateType
+	var results map[string]types.Result
+	switch updateType {
+	case "override":
+		results = tickerResultsOverride
+	case "update":
+		results = tickerResults
+	default:
+		log.Println("Invalid update type")
+		return
+	}
 
-	// Respond with success message
+	// Update the corresponding map
+	newResult := types.Result{TotalBitcoin: data.Result.TotalBitcoin, Date: data.Result.Date}
+	results[data.Ticker] = newResult
+
+	// Log and respond with success message
+	log.Printf("Data %s %s: %+v", updateType, data.Ticker, results[data.Ticker])
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintln(w, "Data override successful")
+	fmt.Fprintf(w, "Data %s successful\n", updateType)
+}
+
+func handleOverride(w http.ResponseWriter, r *http.Request) {
+	handleData(w, r, "override")
+}
+
+func handleUpdate(w http.ResponseWriter, r *http.Request) {
+	handleData(w, r, "update")
 }
 
 func getCMEBRRNYRR() []cmebrrny.ReferenceRate {
