@@ -1,6 +1,9 @@
 ## Bitcoin ETF scraper
 
-This service scrapes the Bitcoin ETF web sites and reports the information on the X account [@ubiqetfbot](https://twitter.com/ubiqetfbot).
+This service/bot scrapes the Bitcoin ETF web sites and reports the information on the X account [@ubiqetfbot](https://twitter.com/ubiqetfbot).
+
+This page outlines the methodology of this bot: [Bitcoin ETF flow bot - Methodology
+](https://julianyap.com/pages/2024-03-13-1710370430/)
 
 ## Set up
 
