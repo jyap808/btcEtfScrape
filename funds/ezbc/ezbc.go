@@ -36,6 +36,7 @@ type Holding struct {
 }
 
 func Collect() (result types.Result) {
+	// This API key is hard coded on their web site
 	url := "https://www.franklintempleton.com/api/pds/price-and-performance?apikey=4ef35821-5244-41bc-a699-0192d002c3d1p&op=Holdings&id=14"
 
 	// JSON payload

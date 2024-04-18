@@ -32,7 +32,7 @@ func Collect() (result types.Result) {
 		nextDataContent := e.DOM.Find("#__NEXT_DATA__").Text()
 
 		// Parse the content as JSON
-		var data nextData //[string]interface{}
+		var data nextData
 		err := json.NewDecoder(strings.NewReader(nextDataContent)).Decode(&data)
 		if err != nil {
 			log.Println(err)
