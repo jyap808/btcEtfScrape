@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"strings"
@@ -61,6 +62,9 @@ var (
 	// polling intervals
 	pollMinutes  int = 5
 	backoffHours int = 12
+
+	// Skip X post when the difference is under this threshold
+	minBitcoinDiff float64 = 1.0
 
 	tickerDetails = map[string]tickerDetail{
 		"ARKB": {Description: "Ark 21Shares", Note: "ARKB holdings are usually updated 10+ hours after the close of trading"}, // ARK 21Shares Bitcoin ETF
@@ -211,7 +215,11 @@ func handleFund(wg *sync.WaitGroup, collector func() types.Result, ticker string
 					flowEmoji, humanize.CommafWithDigits(bitcoinDiff, 2), humanize.CommafWithDigits(flowDiff, 0),
 					humanize.CommafWithDigits(newResult.TotalBitcoin, 1), note)
 
-				postTweet(xMsg)
+				// Reporting threshold check. Get the absolute difference
+				absBitcoinDiff := math.Abs(bitcoinDiff)
+				if absBitcoinDiff < minBitcoinDiff {
+					postTweet(xMsg)
+				}
 
 				tickerResults[ticker] = newResult
 
