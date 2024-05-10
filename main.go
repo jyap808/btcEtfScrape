@@ -217,7 +217,7 @@ func handleFund(wg *sync.WaitGroup, collector func() types.Result, ticker string
 
 				// Reporting threshold check. Get the absolute difference
 				absBitcoinDiff := math.Abs(bitcoinDiff)
-				if absBitcoinDiff < minBitcoinDiff {
+				if absBitcoinDiff > minBitcoinDiff {
 					postTweet(xMsg)
 				}
 
