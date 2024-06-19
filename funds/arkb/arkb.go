@@ -13,7 +13,7 @@ import (
 )
 
 func Collect() (result types.Result) {
-	url := "https://ark-funds.com/wp-content/uploads/funds-etf-csv/ARK_21SHARES_BITCOIN_ETF_ARKB_HOLDINGS.csv"
+	url := "https://assets.ark-funds.com/fund-documents/funds-etf-csv/ARK_21SHARES_BITCOIN_ETF_ARKB_HOLDINGS.csv"
 
 	// Create a new HTTP client
 	client := http.Client{}
@@ -52,6 +52,12 @@ func Collect() (result types.Result) {
 		}
 		if err != nil {
 			log.Println(err)
+		}
+
+		// CSV record validity check
+		if len(record) < 6 {
+			log.Printf("ARKB: Invalid record length: expected at least 6 fields, got %d", len(record))
+			return
 		}
 
 		if i == 1 {
