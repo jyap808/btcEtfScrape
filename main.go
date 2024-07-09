@@ -292,7 +292,12 @@ func getCMEBRRNYRR() []cmebrrny.ReferenceRate {
 
 	rr, err := cmebrrny.GetBRRYNY()
 	if err != nil {
-		return []cmebrrny.ReferenceRate{}
+		log.Println("GetBRRYNY error:", err)
+		if len(cmebrrnyRR) > 0 {
+			return cmebrrnyRR
+		} else {
+			return []cmebrrny.ReferenceRate{}
+		}
 	}
 
 	cmebrrnyRR = rr
