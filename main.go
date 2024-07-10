@@ -104,8 +104,8 @@ func main() {
 
 	// Initialize cmebrrnyRR
 	cmebrrnyRR = getCMEBRRNYRR()
-	if cmebrrnyRR[0].Value == 0 {
-		log.Fatalln("Error: CME BRR NY is 0")
+	if len(cmebrrnyRR) < 5 || cmebrrnyRR[0].Value == 0 {
+		log.Fatalln("Error: CME BRR NY initialization error")
 	}
 
 	var wg sync.WaitGroup
