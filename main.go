@@ -57,7 +57,7 @@ var (
 	// track
 	tickerResults         = map[string]types.Result{}
 	tickerResultsOverride = map[string]types.Result{}
-	cmebrrnyRR            []cmebrrny.ReferenceRate
+	cmebrrnyRR            [5]cmebrrny.ReferenceRate
 
 	// polling intervals
 	pollMinutes  int = 5
@@ -104,7 +104,7 @@ func main() {
 
 	// Initialize cmebrrnyRR
 	cmebrrnyRR = getCMEBRRNYRR()
-	if len(cmebrrnyRR) < 5 || cmebrrnyRR[0].Value == 0 {
+	if cmebrrnyRR[0].Value == 0 {
 		log.Fatalln("Error: CME BRR NY initialization error")
 	}
 
@@ -279,7 +279,7 @@ func handleUpdate(w http.ResponseWriter, r *http.Request) {
 	handleData(w, r, "update")
 }
 
-func getCMEBRRNYRR() []cmebrrny.ReferenceRate {
+func getCMEBRRNYRR() [5]cmebrrny.ReferenceRate {
 	if len(cmebrrnyRR) > 0 {
 		// Cache the value once every 24 hours
 		firstDate := time.Now()
@@ -296,7 +296,7 @@ func getCMEBRRNYRR() []cmebrrny.ReferenceRate {
 		if len(cmebrrnyRR) > 0 {
 			return cmebrrnyRR
 		} else {
-			return []cmebrrny.ReferenceRate{}
+			return [5]cmebrrny.ReferenceRate{}
 		}
 	}
 
