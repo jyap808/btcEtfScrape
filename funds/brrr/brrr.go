@@ -20,7 +20,7 @@ func Collect() (result types.Result) {
 			totalBitcoinRaw := e.ChildText("td:nth-of-type(4)")
 			inputClean := strings.ReplaceAll(totalBitcoinRaw, ",", "")
 			totalBitcoinInTrust, _ := strconv.ParseFloat(inputClean, 64)
-			result.TotalBitcoin = totalBitcoinInTrust
+			result.TotalAsset = totalBitcoinInTrust
 			return
 		}
 	})

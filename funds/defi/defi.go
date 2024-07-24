@@ -25,7 +25,7 @@ func Collect() (result types.Result) {
 				inputClean = strings.TrimSpace(inputClean)
 				totalBitcoinInTrust, _ := strconv.ParseFloat(inputClean, 64)
 
-				result.TotalBitcoin = totalBitcoinInTrust
+				result.TotalAsset = totalBitcoinInTrust
 			}
 		})
 	})

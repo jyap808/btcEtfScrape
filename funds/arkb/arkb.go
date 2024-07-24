@@ -71,7 +71,7 @@ func Collect() (result types.Result) {
 			inputClean := strings.ReplaceAll(totalRaw, ",", "")
 			total, _ := strconv.ParseFloat(inputClean, 64)
 
-			result = types.Result{Date: parsedTime, TotalBitcoin: total}
+			result = types.Result{Date: parsedTime, TotalAsset: total}
 			return
 		}
 	}

@@ -58,7 +58,7 @@ func Collect() (result types.Result) {
 
 	if rowHoldings == colHoldings {
 		total, _ := strconv.ParseFloat(rowHoldings, 64)
-		result.TotalBitcoin = total
+		result.TotalAsset = total
 	}
 
 	return

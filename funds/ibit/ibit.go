@@ -65,7 +65,7 @@ func Collect() (result types.Result) {
 			sharesMap, ok := fund[6].(map[string]interface{})
 			if ok {
 				sharesRaw, _ := sharesMap["raw"].(float64)
-				result.TotalBitcoin = sharesRaw
+				result.TotalAsset = sharesRaw
 				return
 			}
 		}

@@ -78,7 +78,7 @@ func findResultsInIncludes(includesData map[string]interface{}) (types.Result, e
 			// Parse the string as a time.Time value
 			parsedTime, _ := time.Parse(layout, include["date"].(string))
 
-			result.TotalBitcoin = totalBitcoinInTrust
+			result.TotalAsset = totalBitcoinInTrust
 			result.Date = parsedTime
 
 			return *result, nil

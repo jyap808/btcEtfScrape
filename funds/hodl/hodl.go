@@ -76,7 +76,7 @@ func Collect() (result types.Result) {
 			totalRaw := nav.Value
 			inputClean := strings.ReplaceAll(totalRaw, ",", "")
 			total, _ := strconv.ParseFloat(inputClean, 64)
-			result.TotalBitcoin = total
+			result.TotalAsset = total
 			return
 		}
 	}

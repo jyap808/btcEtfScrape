@@ -88,7 +88,7 @@ func Collect() (result types.Result) {
 			totalRaw := nav.Quantity
 			inputClean := strings.ReplaceAll(totalRaw, ",", "")
 			total, _ := strconv.ParseFloat(inputClean, 64)
-			result.TotalBitcoin = total
+			result.TotalAsset = total
 
 			// Define the layout of the input date
 			layout := "01/02/2006"

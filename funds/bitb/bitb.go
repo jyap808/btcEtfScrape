@@ -24,7 +24,7 @@ func Collect() (result types.Result) {
 					// Print the figure
 					inputClean := strings.ReplaceAll(figure, ",", "")
 					totalBitcoinInTrust, _ := strconv.ParseFloat(inputClean, 64)
-					result.TotalBitcoin = totalBitcoinInTrust
+					result.TotalAsset = totalBitcoinInTrust
 					return
 				}
 			})

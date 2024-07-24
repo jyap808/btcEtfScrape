@@ -57,7 +57,7 @@ var (
 	// track
 	tickerResults         = map[string]types.Result{}
 	tickerResultsOverride = map[string]types.Result{}
-	cmebrrnyRR            [5]cmebrrny.ReferenceRate
+	asset_rr              [5]cmebrrny.ReferenceRate
 
 	// polling intervals
 	pollMinutes  int = 5
@@ -103,8 +103,8 @@ func main() {
 	}
 
 	// Initialize cmebrrnyRR
-	cmebrrnyRR = getCMEBRRNYRR()
-	if cmebrrnyRR[0].Value == 0 {
+	asset_rr = getCMEBRRNYRR()
+	if asset_rr[0].Value == 0 {
 		log.Fatalln("Error: CME BRR NY initialization error")
 	}
 
@@ -151,7 +151,7 @@ func handleFund(wg *sync.WaitGroup, collector func() types.Result, ticker string
 		override := false
 
 		// Check if there is a manual override set
-		if tickerResultsOverride[ticker].TotalBitcoin != 0 {
+		if tickerResultsOverride[ticker].TotalAsset != 0 {
 			newResult = tickerResultsOverride[ticker]
 
 			// Clear override
@@ -171,20 +171,20 @@ func handleFund(wg *sync.WaitGroup, collector func() types.Result, ticker string
 			continue
 		}
 
-		if newResult.TotalBitcoin != tickerResults[ticker].TotalBitcoin && newResult.TotalBitcoin != 0 {
-			if tickerResults[ticker].TotalBitcoin == 0 {
+		if newResult.TotalAsset != tickerResults[ticker].TotalAsset && newResult.TotalAsset != 0 {
+			if tickerResults[ticker].TotalAsset == 0 {
 				// initialize
 				tickerResults[ticker] = newResult
 				log.Printf("Initialize %s: %+v", ticker, tickerResults[ticker])
 			} else {
 				// compare
-				bitcoinDiff := newResult.TotalBitcoin - tickerResults[ticker].TotalBitcoin
+				assetDiff := newResult.TotalAsset - tickerResults[ticker].TotalAsset
 				rr := getCMEBRRNYRR()
-				bitcoinPrice := rr[0].Value
+				assetPrice := rr[0].Value
 				if tickerDetails[ticker].Delayed {
-					bitcoinPrice = rr[1].Value
+					assetPrice = rr[1].Value
 				}
-				flowDiff := bitcoinDiff * bitcoinPrice
+				flowDiff := assetDiff * assetPrice
 
 				header := ticker
 				if newResult.Date != (time.Time{}) {
@@ -195,13 +195,13 @@ func handleFund(wg *sync.WaitGroup, collector func() types.Result, ticker string
 				}
 
 				msg := fmt.Sprintf("%s\nCHANGE Bitcoin: %.1f\nTOTAL Bitcoin: %.1f\nDETAILS Flow: $%.1f, CMEBRRNY: $%.1f",
-					header, bitcoinDiff, newResult.TotalBitcoin,
+					header, assetDiff, newResult.TotalAsset,
 					flowDiff, rr[0].Value)
 
 				postDiscord(msg)
 
 				flowEmoji := "🚀"
-				if bitcoinDiff < 0 {
+				if assetDiff < 0 {
 					flowEmoji = "👎"
 				}
 
@@ -212,12 +212,12 @@ func handleFund(wg *sync.WaitGroup, collector func() types.Result, ticker string
 
 				xMsg := fmt.Sprintf("%s $%s\n\n%s FLOW: %s BTC, $%s\n🏦 TOTAL Bitcoin in Trust: %s $BTC\n\n%s",
 					tickerDetails[ticker].Description, ticker,
-					flowEmoji, humanize.CommafWithDigits(bitcoinDiff, 2), humanize.CommafWithDigits(flowDiff, 0),
-					humanize.CommafWithDigits(newResult.TotalBitcoin, 1), note)
+					flowEmoji, humanize.CommafWithDigits(assetDiff, 2), humanize.CommafWithDigits(flowDiff, 0),
+					humanize.CommafWithDigits(newResult.TotalAsset, 1), note)
 
 				// Reporting threshold check. Get the absolute difference
-				absBitcoinDiff := math.Abs(bitcoinDiff)
-				if absBitcoinDiff > minBitcoinDiff {
+				absAssetDiff := math.Abs(assetDiff)
+				if absAssetDiff > minBitcoinDiff {
 					postTweet(xMsg)
 				}
 
@@ -262,7 +262,7 @@ func handleData(w http.ResponseWriter, r *http.Request, updateType string) {
 	}
 
 	// Update the corresponding map
-	newResult := types.Result{TotalBitcoin: data.Result.TotalBitcoin, Date: data.Result.Date}
+	newResult := types.Result{TotalAsset: data.Result.TotalAsset, Date: data.Result.Date}
 	results[data.Ticker] = newResult
 
 	// Log and respond with success message
@@ -280,31 +280,31 @@ func handleUpdate(w http.ResponseWriter, r *http.Request) {
 }
 
 func getCMEBRRNYRR() [5]cmebrrny.ReferenceRate {
-	if len(cmebrrnyRR) > 0 {
+	if len(asset_rr) > 0 {
 		// Cache the value once every 24 hours
 		firstDate := time.Now()
-		secondDate := cmebrrnyRR[0].Date
+		secondDate := asset_rr[0].Date
 		difference := firstDate.Sub(secondDate)
 		if difference.Hours() < 24 {
-			return cmebrrnyRR
+			return asset_rr
 		}
 	}
 
 	rr, err := cmebrrny.GetBRRYNY()
 	if err != nil {
-		log.Println("GetBRRYNY error:", err)
-		if len(cmebrrnyRR) > 0 {
-			return cmebrrnyRR
+		log.Println("Get Reference Rate error:", err)
+		if len(asset_rr) > 0 {
+			return asset_rr
 		} else {
 			return [5]cmebrrny.ReferenceRate{}
 		}
 	}
 
-	cmebrrnyRR = rr
+	asset_rr = rr
 
-	log.Println("Set CME BRR NY:", cmebrrnyRR)
+	log.Println("Set Reference Rate:", asset_rr)
 
-	return cmebrrnyRR
+	return asset_rr
 }
 
 func postDiscord(msg string) {

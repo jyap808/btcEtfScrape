@@ -43,7 +43,7 @@ func Collect() (result types.Result) {
 					totalRaw := sharesParMatch[1]
 					inputClean := strings.ReplaceAll(totalRaw, ",", "")
 					total, _ := strconv.ParseFloat(inputClean, 64)
-					result.TotalBitcoin = total
+					result.TotalAsset = total
 				}
 			}
 		}
