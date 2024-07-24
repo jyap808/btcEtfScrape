@@ -41,7 +41,7 @@ func Collect() (result types.Result) {
 		// Access the "includes" field
 		includesData := data.Props.PageProps.Page.Includes
 
-		// Search for the value containing "totalBitcoinInTrust" within "includes"
+		// Search for the value within "includes"
 		result, err = findResultsInIncludes(includesData)
 		if err != nil {
 			log.Println(err)
@@ -67,23 +67,23 @@ func findResultsInIncludes(includesData map[string]interface{}) (types.Result, e
 			continue
 		}
 
-		// Search for "totalBitcoinInTrustRaw" within each include
-		totalBitcoinInTrustRaw, found := include["totalBitcoinInTrust"].(string)
+		// Search for "totalAssetInTrustRaw" within each include
+		totalAssetInTrustRaw, found := include["totalAssetInTrust"].(string)
 		if found {
-			inputClean := strings.ReplaceAll(totalBitcoinInTrustRaw, ",", "")
-			totalBitcoinInTrust, _ := strconv.ParseFloat(inputClean, 64)
+			inputClean := strings.ReplaceAll(totalAssetInTrustRaw, ",", "")
+			totalAssetInTrust, _ := strconv.ParseFloat(inputClean, 64)
 
 			// Define the layout of the input date
 			layout := "01/02/2006"
 			// Parse the string as a time.Time value
 			parsedTime, _ := time.Parse(layout, include["date"].(string))
 
-			result.TotalAsset = totalBitcoinInTrust
+			result.TotalAsset = totalAssetInTrust
 			result.Date = parsedTime
 
 			return *result, nil
 		}
 	}
 
-	return types.Result{}, fmt.Errorf("totalBitcoinInTrust not found within 'includes'")
+	return types.Result{}, fmt.Errorf("totalAssetInTrust not found within 'includes'")
 }
